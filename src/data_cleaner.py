@@ -84,11 +84,26 @@ class DataCleaner:
         if missing:
             raise KeyError(f"Columns not found in DataFrame: {missing}")
 
-        non_string = [c for c in cols if not pdt.is_string_dtype(df[c])]
+        #non_string = [c for c in cols if not pdt.is_string_dtype(df[c])]
+        #if non_string:
+        #    raise TypeError(f"Columns are not string dtype: {non_string}")
+
+        # Verificar que cada valor es string o NaN (los tests permiten None/NaN)
+        non_string = [
+            c
+            for c in cols
+            if not all(isinstance(x, str) or pd.isna(x) for x in df[c])
+        ]
         if non_string:
             raise TypeError(f"Columns are not string dtype: {non_string}")
 
         result = df.copy()
+        
+        #for c in cols:
+        #    result[c] = result[c].str.strip()
+        #return result
+    
+        # Aplicar strip
         for c in cols:
             result[c] = result[c].str.strip()
         return result
@@ -127,17 +142,27 @@ class DataCleaner:
         TypeError
             If ``col`` is not numeric.
         """
+        #if col not in df.columns:
+        #    raise KeyError(f"Column '{col}' not found in DataFrame")
+
+        #if not pdt.is_numeric_dtype(df[col]):
+        #    raise TypeError(f"Column '{col}' must be numeric to compute IQR")
+        
+        # Validaciones
         if col not in df.columns:
-            raise KeyError(f"Column '{col}' not found in DataFrame")
+            raise KeyError(f"Column not found: {col}")
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            raise TypeError(f"Column is not numeric: {col}")        
 
-        if not pdt.is_numeric_dtype(df[col]):
-            raise TypeError(f"Column '{col}' must be numeric to compute IQR")
-
-        q1 = df[col].quantile(0.25)
-        q3 = df[col].quantile(0.75)
+        q1 = df[col].quantile(0.25, interpolation='lower')
+        q3 = df[col].quantile(0.75, interpolation='lower')
         iqr = q3 - q1
         lower = q1 - factor * iqr
         upper = q3 + factor * iqr
 
-        mask = (df[col] >= lower) & (df[col] <= upper)
-        return df.loc[mask].copy()
+        #mask = (df[col] >= lower) & (df[col] <= upper)
+        #return df.loc[mask].copy()
+        
+        result = df[(df[col] >= lower) & (df[col] <= upper)].copy()
+        return result
+
